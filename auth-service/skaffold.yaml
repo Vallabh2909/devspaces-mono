@@ -1,0 +1,12 @@
+apiVersion: skaffold/v4beta11 
+kind: Config
+build:
+  local:
+    push: false
+  artifacts:
+  - image: auth-service
+    context: .
+    docker:
+      dockerfile: Dockerfile
+    sync:
+      '**/*.js': .

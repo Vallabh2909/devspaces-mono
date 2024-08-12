@@ -1,0 +1,10 @@
+/.vscode
+/node_modules
+/k8s
+/Dockerfile
+/.git
+/.github
+/.idea
+
+*.env
+.env.*
