@@ -1,0 +1,23 @@
+module(
+    name = "my_project",
+    version = "0.1.0",
+)
+
+# Add Bazel rules for Node.js using Bzlmod
+bazel_dep(name = "rules_nodejs", version = "6.0.0")
+
+# Use the npm_translate_lock extension to manage node_modules
+use_extension(
+    "@rules_nodejs//npm:npm.bzl",
+    "npm_translate_lock",
+    name = "npm",
+)
+
+# Set up npm_translate_lock to use package.json and yarn.lock
+npm_translate_lock(
+    name = "npm_deps",
+    package_json = "//:package.json",
+    lockfile = "//:package-lock.json",
+)
+
+use_repo(npm_deps = "npm_deps")
