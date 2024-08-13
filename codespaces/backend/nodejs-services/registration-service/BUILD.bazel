@@ -1,9 +1,0 @@
-load("@npm_deps//:index.bzl", "nodejs_binary")
-
-# Define a nodejs_binary target that runs your dev server
-nodejs_binary(
-    name = "dev",
-    entry_point = "src/index.js",
-    data = glob(["src/**"]),
-    args = ["--inspect=9229"],  # Optional: to enable debugging
-)
