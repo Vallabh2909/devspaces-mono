@@ -6,7 +6,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const envPath = resolve(__dirname ,`../.env.${process.env.NODE_ENV}`);
 import connectDB from "./config/MongoDB.js";
 import { connectRedis } from "./config/Redis.js";
-import { connectRabbitMQ } from "./config/RabbitMQ.js";
+import { connectRabbitMQ, publishMessage } from "./config/RabbitMQ.js";
 dotenv.config({
     path: envPath
 });
@@ -34,7 +34,7 @@ const startServer = async () => {
     await connectDB();
     
     // Connect to Redis
-    await connectRedis();
+    // await connectRedis();
 
     // Connect to RabbitMQ
     await connectRabbitMQ();
@@ -43,6 +43,7 @@ const startServer = async () => {
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
+      publishMessage("event-bus","password-change", "Hello World");
     });
 
   } catch (error) {

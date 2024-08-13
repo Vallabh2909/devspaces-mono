@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import compression from "compression";
+// import { channel } from "./config/RabbitMQ.js";
 import {
   corsOptions,
   helmetOptions,

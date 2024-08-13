@@ -1,20 +1,19 @@
 import { Router } from "express";
-import { registerUser ,cache} from "../controllers/user.controllers.js";
-import { upload } from "../middlewares/multer.middleware.js";
-
-
-
+import { logIn,logOut} from "../controllers/user.controllers.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { consumeQueue,publishMessage } from "../config/RabbitMQ.js";
 const router = Router();
 
-router.route("/register").post(upload.fields([
-    {
-        name:"avatar",
-        maxCount:1
-    },
-    {
-        name:"coverImage",
-        maxCount:1
-    }
-    ]),registerUser);
-router.route("/cache/:id").get(cache);
+let i=0;
+
+router.route("/login").post(logIn);
+router.route("/logout").post(verifyJWT,logOut);
+router.route("/fet").get(async(req, res) => {  
+    const respo =consumeQueue("password-change-queue",(msg)=>{console.log(msg)});  
+    return res.json(respo);
+});
+router.route("/publish").get(async(req, res) => {  
+    const respo =  publishMessage("event-bus","password-change", `Hello World ${i++}`);
+    return res.json(respo);
+});
 export default router;

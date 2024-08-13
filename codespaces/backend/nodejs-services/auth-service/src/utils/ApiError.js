@@ -12,7 +12,7 @@ class ApiError extends Error {
         this.errors = errors
 
         if (stack) {
-            this.stack = process.env.NODE_ENV="development"? "All fields" :stack
+            this.stack = process.env.NODE_ENV==="production"? "" :stack
         } else{
             Error.captureStackTrace(this, this.constructor)
         }
