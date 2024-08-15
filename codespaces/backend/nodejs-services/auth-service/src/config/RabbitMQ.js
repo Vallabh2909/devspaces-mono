@@ -2,12 +2,88 @@ import amqp from "amqplib";
 
 let channel = null;
 const exchanges = {}; // To keep track of exchanges
-const queues = {};    // To keep track of queues
+const queues = {}; // To keep track of queues
+
+const assertUserEventsExchangeAndQueues = async () => {
+  try {
+    // Assert the exchange
+    await channel.assertExchange("user-events-exchange", "topic", {
+      durable: true,
+    });
+
+    // Assert each queue and bind it to the exchange with the appropriate routing key
+
+    // 1. auth-registration-queue
+    await channel.assertQueue("auth-registration-queue", { durable: true });
+    await channel.bindQueue(
+      "auth-registration-queue",
+      "user-events-exchange",
+      "user.registration",
+    );
+
+    // 2. notification-registration-queue
+    await channel.assertQueue("notification-registration-queue", {
+      durable: true,
+    });
+    await channel.bindQueue(
+      "notification-registration-queue",
+      "user-events-exchange",
+      "user.registration.email",
+    );
+
+    // 3. auth-email-change-queue
+    await channel.assertQueue("auth-email-change-queue", { durable: true });
+    await channel.bindQueue(
+      "auth-email-change-queue",
+      "user-events-exchange",
+      "user.email.change",
+    );
+
+    // 4. notification-email-change-queue
+    await channel.assertQueue("notification-email-change-queue", {
+      durable: true,
+    });
+    await channel.bindQueue(
+      "notification-email-change-queue",
+      "user-events-exchange",
+      "user.email.change",
+    );
+
+    // 5. notification-password-change-queue
+    await channel.assertQueue("notification-password-change-queue", {
+      durable: true,
+    });
+    await channel.bindQueue(
+      "notification-password-change-queue",
+      "user-events-exchange",
+      "user.password.change",
+    );
+
+    // 6. notification-username-update-queue
+    await channel.assertQueue("notification-username-update-queue", {
+      durable: true,
+    });
+    await channel.bindQueue(
+      "notification-username-update-queue",
+      "user-events-exchange",
+      "user.username.update",
+    );
+
+    console.log(
+      "User events exchange and all queues have been asserted and bound.",
+    );
+  } catch (error) {
+    console.error("Error asserting exchanges and queues:", error);
+    throw error;
+  }
+};
+
+export { assertUserEventsExchangeAndQueues };
 
 /**
  * Connect to RabbitMQ and set up the channel.
  */
-const connectRabbitMQ = async () => {
+const connectRabbitMQ = async (retries = 5) => {
   try {
     const connection = await amqp.connect({
       protocol: "amqp",
@@ -19,21 +95,35 @@ const connectRabbitMQ = async () => {
     });
     channel = await connection.createChannel();
     console.log("Connected to RabbitMQ");
-    await assertExchange("event-bus", "direct"); 
-    await assertQueue("password-change-queue");
-    await bindQueue("password-change-queue", "event-bus", "password-change");
+    await assertUserEventsExchangeAndQueues();
+    // console.log(channel);
+    // Handle connection errors and reconnections
+    connection.on('error', (err) => {
+      console.error('Connection error:', err);
+    });
+
+    connection.on('close', () => {
+      console.warn('Connection closed. Reconnecting...');
+      setTimeout(() => connectRabbitMQ(retries - 1), 5000);
+    });
   } catch (error) {
     console.error("RabbitMQ connection error:", error);
-    throw error;
+    if (retries > 0) {
+      console.log(`Retrying connection (${retries} retries left)...`);
+      setTimeout(() => connectRabbitMQ(retries - 1), 5000);
+    } else {
+      throw error;
+    }
   }
 };
+
 
 /**
  * Create an exchange if it doesn't exist.
  * @param {string} exchangeName - The name of the exchange.
  * @param {string} type - The type of the exchange (direct, topic, fanout).
  */
-const assertExchange = async (exchangeName, type = "direct") => {
+const assertExchange = async (exchangeName, type="topic") => {
   if (!exchanges[exchangeName]) {
     await channel.assertExchange(exchangeName, type, { durable: true });
     exchanges[exchangeName] = true;
@@ -60,11 +150,13 @@ const assertQueue = async (queueName, options = { durable: true }) => {
  * @param {string} exchangeName - The name of the exchange.
  * @param {string} routingKey - The routing key.
  */
-const bindQueue = async (queueName, exchangeName, routingKey = '') => {
+const bindQueue = async (queueName, exchangeName, routingKey = "") => {
   await assertQueue(queueName);
   await assertExchange(exchangeName);
   await channel.bindQueue(queueName, exchangeName, routingKey);
-  console.log(`Queue ${queueName} bound to exchange ${exchangeName} with routing key ${routingKey}`);
+  console.log(
+    `Queue ${queueName} bound to exchange ${exchangeName} with routing key ${routingKey}`,
+  );
 };
 
 /**
@@ -75,9 +167,13 @@ const bindQueue = async (queueName, exchangeName, routingKey = '') => {
  */
 const publishMessage = async (exchangeName, routingKey, message) => {
   await assertExchange(exchangeName);
-  const msgBuffer = Buffer.isBuffer(message) ? message : Buffer.from(JSON.stringify(message));
+  const msgBuffer = Buffer.isBuffer(message)
+    ? message
+    : Buffer.from(JSON.stringify(message));
   channel.publish(exchangeName, routingKey, msgBuffer, { persistent: true });
-  console.log(`Message published to exchange ${exchangeName} with routing key ${routingKey}`);
+  console.log(
+    `Message published to exchange ${exchangeName} with routing key ${routingKey}`,
+  );
 };
 
 /**
@@ -97,11 +193,4 @@ const consumeQueue = async (queueName, callback) => {
   console.log(`Consuming messages from queue ${queueName}`);
 };
 
-export {
-  connectRabbitMQ,
-  assertQueue,
-  assertExchange,
-  bindQueue,
-  publishMessage,
-  consumeQueue
-};
+export { connectRabbitMQ, publishMessage, consumeQueue };

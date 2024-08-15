@@ -34,7 +34,7 @@ const startServer = async () => {
     await connectDB();
     
     // Connect to Redis
-    await connectRedis();
+    // await connectRedis();
 
     // Connect to RabbitMQ
     await connectRabbitMQ();

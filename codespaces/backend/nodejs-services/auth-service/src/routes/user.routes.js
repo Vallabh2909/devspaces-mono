@@ -16,4 +16,7 @@ router.route("/publish").get(async(req, res) => {
     const respo =  publishMessage("event-bus","password-change", `Hello World ${i++}`);
     return res.json(respo);
 });
+router.route("/verify-token").post(verifyJWT,(req,res)=>{
+    return res.json({message:"Token verified",success:true});
+});
 export default router;

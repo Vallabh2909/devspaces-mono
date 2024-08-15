@@ -9,14 +9,25 @@ dotenv.config({
 const corsOptions = {
   origin: process.env.CLIENT_URL,
   credentials: true,
-  // methods: process.env.CORS_ALLOWED_METHODS.split(","),
-  // allowedHeaders: process.env.CORS_ALLOWED_HEADERS.split(","),
-  // exposedHeaders: process.env.CORS_EXPOSED_HEADERS.split(","),
-  // maxAge: parseInt(process.env.CORS_MAX_AGE, 10),
-  // preflightContinue: process.env.CORS_PREFLIGHT_CONTINUE === "true",
-  // optionsSuccessStatus: parseInt(process.env.CORS_OPTIONS_SUCCESS_STATUS, 10),
+  methods: process.env.CORS_ALLOWED_METHODS.split(","),
+  allowedHeaders: process.env.CORS_ALLOWED_HEADERS.split(","),
+  exposedHeaders: process.env.CORS_EXPOSED_HEADERS.split(","),
+  maxAge: parseInt(process.env.CORS_MAX_AGE, 10),
+  preflightContinue: process.env.CORS_PREFLIGHT_CONTINUE === "true",
+  optionsSuccessStatus: parseInt(process.env.CORS_OPTIONS_SUCCESS_STATUS, 10),
 };
-const helmetOptions = {};
+const helmetOptions = {
+  contentSecurityPolicy: false, // Disable if you're not setting up CSP or using inline scripts/styles
+  frameguard: { action: 'deny' }, // Prevent clickjacking by disallowing your site from being framed
+  hsts: {
+    maxAge: 31536000, // 1 year
+    includeSubDomains: true,
+    preload: true,
+  },
+  noSniff: true, // Prevent browsers from sniffing the MIME type
+  xssFilter: true, // Adds small XSS protection
+  referrerPolicy: { policy: 'no-referrer' }, // Controls the referrer information sent along with requests
+};
 const cookieParserOptions = {};
 const rateLimitOptions = {
   windowMs: 15 * 60 * 1000, // 15 minutes

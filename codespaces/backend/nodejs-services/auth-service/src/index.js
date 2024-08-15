@@ -1,14 +1,15 @@
 import app from "./app.js";
 import dotenv from "dotenv";
 import { resolve } from "path";
-import { fileURLToPath } from 'url';
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
-const envPath = resolve(__dirname ,`../.env.${process.env.NODE_ENV}`);
+import { fileURLToPath } from "url";
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+const envPath = resolve(__dirname, `../.env.${process.env.NODE_ENV}`);
 import connectDB from "./config/MongoDB.js";
 import { connectRedis } from "./config/Redis.js";
-import { connectRabbitMQ, publishMessage } from "./config/RabbitMQ.js";
+import { connectRabbitMQ, consumeQueue } from "./config/RabbitMQ.js";
+import { createUser } from "./repositories/user.repositories.js";
 dotenv.config({
-    path: envPath
+  path: envPath,
 });
 
 // connectDB()
@@ -26,13 +27,11 @@ dotenv.config({
 //     console.log(`MongoDB connection failed ${error}`);
 //   });
 
-
-
 const startServer = async () => {
   try {
     // Connect to MongoDB
     await connectDB();
-    
+
     // Connect to Redis
     // await connectRedis();
 
@@ -41,13 +40,12 @@ const startServer = async () => {
 
     // Start the application
     const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
+    app.listen(PORT, async () => {
       console.log(`Server is running on port ${PORT}`);
-      publishMessage("event-bus","password-change", "Hello World");
+      await consumeQueue("auth-registration-queue", createUser);
     });
-
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error("Failed to start server:", error);
     process.exit(1); // Exit the process with failure
   }
 };

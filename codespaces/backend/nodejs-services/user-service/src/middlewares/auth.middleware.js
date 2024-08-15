@@ -3,6 +3,8 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import jwt from "jsonwebtoken";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import axios from "axios";
+import { credentials } from "amqplib";
 
 const options = {
   httpOnly: true,
@@ -25,7 +27,7 @@ const verifyToken = (token, secret) => {
 };
 
 const getUserFromToken = async (decodedToken) => {
-  return await User.findOne({ username: decodedToken?.username }).select(
+  return await User.findById(decodedToken?._id).select(
     "-password -refreshToken",
   );
 };
@@ -62,6 +64,8 @@ const renewAccessToken = asyncHandler(async (req, res, next) => {
 });
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
+  console.log(req.cookies);
+  
   const accessToken =
     req.cookies?.accessToken ||
     req.header("Authorization")?.replace("Bearer", "").trim();
@@ -69,30 +73,24 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
   if (!accessToken) {
     return await renewAccessToken(req, res, next);
   }
-
+  
   try {
-    const decodedToken = verifyToken(
-      accessToken,
-      process.env.ACCESS_TOKEN_SECRET,
-    );
-    const user = await getUserFromToken(decodedToken);
-    if (!user) {
-      throw new ApiError(401, "Invalid Access Token");
-    }
-    req.user = user;
+    const isTokenValid = await axios.post("http://localhost:3001/api/v1/users/verify-token", {credentials:true}, {
+      cookies: req.cookies
+    });
+    
+    // if (isTokenValid.data.valid) {
+    //   next(); // Token is valid, proceed to the next middleware
+    // } else {
+    //   res.status(401).json({ message: "Invalid token" });
+    // }
+
+    console.log(isTokenValid.data);
     next();
   } catch (error) {
-    if (error.name === "TokenExpiredError") {
-      return await renewAccessToken(req, res, next);
-    } else {
-      res
-        .clearCookie("accessToken", options)
-        .clearCookie("refreshToken", options);
-      return res
-        .status(401)
-        .json(new ApiResponse(401, 22, "Unauthorized Request"));
-    }
+    res.status(500).json({ message: "Token verification failed", error: error.message });
   }
 });
+
 
 export { renewAccessToken, verifyJWT };

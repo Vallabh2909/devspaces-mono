@@ -1,4 +1,5 @@
 import { User } from "../models/user.model.js";
+import { ApiError } from "../utils/ApiError.js";
 
 const findUserByIdentifier = async (identifier) => {
   try {
@@ -30,11 +31,18 @@ const setRefreshToken = async (user, refreshToken) => {
     );
     return refreshToken;
   } catch (error) {
-    throw new ApiError(
-      500,
-      "Something went wrong while setting refresh token",
-    );
+    throw new ApiError(500, "Something went wrong while setting refresh token");
+  }
+};
+const createUser = async (user) => {
+  console.log("Creating user", user);
+  try {
+    const newUser = await User.create(user);
+    return newUser;
+  } catch (error) {
+    console.log(error);
+    throw new ApiError(500, "Something went wrong while creating user");
   }
 };
 
-export { findUserByIdentifier, setRefreshToken };
+export { findUserByIdentifier, setRefreshToken, createUser };

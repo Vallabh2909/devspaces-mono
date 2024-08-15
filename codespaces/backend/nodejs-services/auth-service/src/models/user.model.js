@@ -4,6 +4,14 @@ import { redisClient } from "../config/Redis.js";
 // import { channel } from "../config/RabbitMQ.js";
 const userSchema = new Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
     username: {
       type: String,
       required: true,
@@ -36,12 +44,12 @@ const userSchema = new Schema(
   { timestamps: true },
 );
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) next();
+// userSchema.pre("save", async function (next) {
+//   if (!this.isModified("password")) next();
 
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
-});
+//   this.password = await bcrypt.hash(this.password, 10);
+//   next();
+// });
 
 // userSchema.post("save", async function () {
 //   //logic for sending email(verification email valid for next 10mins) using notification service[RabbitMQ]
@@ -62,8 +70,6 @@ userSchema.pre("save", async function (next) {
 //     throw new Error("Try Again!")
 //  }
 
- 
-
 // });
 
 export const User = mongoose.model("User", userSchema);
@@ -71,5 +77,3 @@ export const User = mongoose.model("User", userSchema);
 userSchema.methods.isPasswordCorrect = async function (password) {
   return await bcrypt.compare(password, this.password);
 };
-
-

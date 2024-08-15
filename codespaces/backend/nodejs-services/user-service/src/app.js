@@ -21,9 +21,9 @@ app.use(cookieParser(cookieParserOptions));
 app.use(rateLimit(rateLimitOptions));
 app.use(compression(compressionOptions));
 app.use(express.static("public"));
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
 import userRoutes from "./routes/user.routes.js";
 app.use("/api/v1/users", userRoutes);
-app.use(express.urlencoded({extended: true, limit: "16kb"}))
 
 app.get("/health", (req, res) => {
   res.status(200).send("OK");
