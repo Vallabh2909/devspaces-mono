@@ -4,6 +4,9 @@ let channel = null;
 const exchanges = {}; // To keep track of exchanges
 const queues = {}; // To keep track of queues
 
+/**
+ * Assert the necessary exchanges and queues for user events.
+ */
 const assertUserEventsExchangeAndQueues = async () => {
   try {
     // Assert the exchange
@@ -11,66 +14,84 @@ const assertUserEventsExchangeAndQueues = async () => {
       durable: true,
     });
 
-    // Assert each queue and bind it to the exchange with the appropriate routing key
-
-    // 1. auth-registration-queue
+    // 1. When a user registers successfully
+    // Send a message to the auth service to create a new user
     await channel.assertQueue("auth-registration-queue", { durable: true });
     await channel.bindQueue(
       "auth-registration-queue",
       "user-events-exchange",
-      "user.registration",
+      "user.registration.auth"
     );
 
-    // 2. notification-registration-queue
+    // Send a notification to the user's registered email
     await channel.assertQueue("notification-registration-queue", {
       durable: true,
     });
     await channel.bindQueue(
       "notification-registration-queue",
       "user-events-exchange",
-      "user.registration.email",
+      "user.registration.email"
     );
 
-    // 3. auth-email-change-queue
-    await channel.assertQueue("auth-email-change-queue", { durable: true });
+    // 2. When a user changes their password
+    // Send a message to the auth service to update the password
+    await channel.assertQueue("auth-password-change-queue", { durable: true });
     await channel.bindQueue(
-      "auth-email-change-queue",
+      "auth-password-change-queue",
       "user-events-exchange",
-      "user.email.change",
+      "user.password.change.auth"
     );
 
-    // 4. notification-email-change-queue
-    await channel.assertQueue("notification-email-change-queue", {
-      durable: true,
-    });
-    await channel.bindQueue(
-      "notification-email-change-queue",
-      "user-events-exchange",
-      "user.email.change",
-    );
-
-    // 5. notification-password-change-queue
+    // Send a notification to the user's email about the password change
     await channel.assertQueue("notification-password-change-queue", {
       durable: true,
     });
     await channel.bindQueue(
       "notification-password-change-queue",
       "user-events-exchange",
-      "user.password.change",
+      "user.password.change.email"
     );
 
-    // 6. notification-username-update-queue
-    await channel.assertQueue("notification-username-update-queue", {
+    // 3. When a user changes their email
+    // Send a message to the auth service to update the email
+    await channel.assertQueue("auth-email-change-queue", { durable: true });
+    await channel.bindQueue(
+      "auth-email-change-queue",
+      "user-events-exchange",
+      "user.email.change.auth"
+    );
+
+    // Send a notification to the user's new email about the email change
+    await channel.assertQueue("notification-email-change-queue", {
       durable: true,
     });
     await channel.bindQueue(
-      "notification-username-update-queue",
+      "notification-email-change-queue",
       "user-events-exchange",
-      "user.username.update",
+      "user.email.change.email"
+    );
+
+    // 4. When a user changes their username
+    // Send a message to the auth service to update the username
+    await channel.assertQueue("auth-username-change-queue", { durable: true });
+    await channel.bindQueue(
+      "auth-username-change-queue",
+      "user-events-exchange",
+      "user.username.change.auth"
+    );
+
+    // Send a notification to the user's email about the username change
+    await channel.assertQueue("notification-username-change-queue", {
+      durable: true,
+    });
+    await channel.bindQueue(
+      "notification-username-change-queue",
+      "user-events-exchange",
+      "user.username.change.email"
     );
 
     console.log(
-      "User events exchange and all queues have been asserted and bound.",
+      "User events exchange and all queues have been asserted and bound."
     );
   } catch (error) {
     console.error("Error asserting exchanges and queues:", error);
@@ -96,14 +117,14 @@ const connectRabbitMQ = async (retries = 5) => {
     channel = await connection.createChannel();
     console.log("Connected to RabbitMQ");
     await assertUserEventsExchangeAndQueues();
-    // console.log(channel);
+
     // Handle connection errors and reconnections
-    connection.on('error', (err) => {
-      console.error('Connection error:', err);
+    connection.on("error", (err) => {
+      console.error("Connection error:", err);
     });
 
-    connection.on('close', () => {
-      console.warn('Connection closed. Reconnecting...');
+    connection.on("close", () => {
+      console.warn("Connection closed. Reconnecting...");
       setTimeout(() => connectRabbitMQ(retries - 1), 5000);
     });
   } catch (error) {
@@ -117,13 +138,12 @@ const connectRabbitMQ = async (retries = 5) => {
   }
 };
 
-
 /**
  * Create an exchange if it doesn't exist.
  * @param {string} exchangeName - The name of the exchange.
  * @param {string} type - The type of the exchange (direct, topic, fanout).
  */
-const assertExchange = async (exchangeName, type="topic") => {
+const assertExchange = async (exchangeName, type = "topic") => {
   if (!exchanges[exchangeName]) {
     await channel.assertExchange(exchangeName, type, { durable: true });
     exchanges[exchangeName] = true;
@@ -131,33 +151,18 @@ const assertExchange = async (exchangeName, type="topic") => {
   }
 };
 
-// /**
-//  * Create a queue if it doesn't exist.
-//  * @param {string} queueName - The name of the queue.
-//  * @param {Object} options - Options for the queue.
-//  */
-// const assertQueue = async (queueName, options = { durable: true }) => {
-//   if (!queues[queueName]) {
-//     await channel.assertQueue(queueName, options);
-//     queues[queueName] = true;
-//     console.log(`Queue ${queueName} created`);
-//   }
-// };
-
-// /**
-//  * Bind a queue to an exchange with a routing key.
-//  * @param {string} queueName - The name of the queue.
-//  * @param {string} exchangeName - The name of the exchange.
-//  * @param {string} routingKey - The routing key.
-//  */
-// const bindQueue = async (queueName, exchangeName, routingKey = "") => {
-//   await assertQueue(queueName);
-//   await assertExchange(exchangeName);
-//   await channel.bindQueue(queueName, exchangeName, routingKey);
-//   console.log(
-//     `Queue ${queueName} bound to exchange ${exchangeName} with routing key ${routingKey}`,
-//   );
-// };
+/**
+ * Create a queue if it doesn't exist.
+ * @param {string} queueName - The name of the queue.
+ * @param {Object} options - Options for the queue.
+ */
+const assertQueue = async (queueName, options = { durable: true }) => {
+  if (!queues[queueName]) {
+    await channel.assertQueue(queueName, options);
+    queues[queueName] = true;
+    console.log(`Queue ${queueName} created`);
+  }
+};
 
 /**
  * Publish a message to an exchange with a routing key.
@@ -172,7 +177,7 @@ const publishMessage = async (exchangeName, routingKey, message) => {
     : Buffer.from(JSON.stringify(message));
   channel.publish(exchangeName, routingKey, msgBuffer, { persistent: true });
   console.log(
-    `Message published to exchange ${exchangeName} with routing key ${routingKey}`,
+    `Message published to exchange ${exchangeName} with routing key ${routingKey}`
   );
 };
 

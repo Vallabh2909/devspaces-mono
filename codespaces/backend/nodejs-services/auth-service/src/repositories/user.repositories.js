@@ -35,8 +35,12 @@ const setRefreshToken = async (user, refreshToken) => {
   }
 };
 const createUser = async (user) => {
-  console.log("Creating user", user);
+  // console.log("Creating user", user);
   try {
+    const userExists = await findUserByIdentifier(user.email);
+    if (userExists) {
+      throw new ApiError(409, "User already exists");
+    }
     const newUser = await User.create(user);
     return newUser;
   } catch (error) {

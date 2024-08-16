@@ -1,6 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { redisClient } from "../config/Redis.js";
+import mongoose from "mongoose";
 import {
   createUser,
   changePasswordService,
@@ -24,8 +25,7 @@ const registerUserController = asyncHandler(async (req, res) => {
 });
 
 const changePasswordController = asyncHandler(async (req, res) => {
-  console.log(req.user);
-  const userId = req.user._id;
+  const userId = req.user.userId;
   const { oldPassword, newPassword, confirmNewPassword } = req.body;
   await changePasswordService(
     userId,
@@ -36,10 +36,5 @@ const changePasswordController = asyncHandler(async (req, res) => {
   res.status(200).json(new ApiResponse(200, "Password changed successfully"));
 });
 
-const cache = asyncHandler(async (req, res, next) => {
-  const { id } = req.params;
-  const username = await redisClient.get(id.toString());
-  res.send(username);
-});
 
 export { registerUserController, changePasswordController };

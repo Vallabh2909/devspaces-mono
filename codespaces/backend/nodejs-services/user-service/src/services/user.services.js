@@ -3,12 +3,17 @@ import uploadOnCloudinary from "../utils/cloudinary.js";
 import bcrypt from "bcrypt";
 import {
   findUserByIdentifier,
+  findUserByUserId,
   createNewUser,
   updateUserPassword,
 } from "../repositories/user.repositories.js";
+import { publishMessage } from "../config/RabbitMQ.js";
+import mongoose from "mongoose";
+
 const isPasswordCorrect = async (password, hashedPassword) => {
   return await bcrypt.compare(password, hashedPassword);
 };
+
 const createUser = async (
   fullName,
   email,
@@ -17,38 +22,82 @@ const createUser = async (
   avatarLocalPath = "",
   coverImageLocalPath = "",
 ) => {
-  try {
-    if (!fullName || !email || !username || !password) {
-      return res.status(400).send("All fields are required");
-    }
-    if (
-      [fullName, email, username, password].some(
-        (field) => field?.trim() === "",
-      )
-    ) {
-      return res.status(400).send("All fields are required");
-    }
-    const userExists = await findUserByIdentifier(username, email);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-    if (userExists) {
-      throw new ApiError(409, "User with same email or username exists");
+  try {
+    // Validation
+    if (!fullName || !email || !username || !password) {
+      throw new ApiError(400, "All fields are required");
     }
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath);
-    const avatar = await uploadOnCloudinary(avatarLocalPath);
-    
-    const user = await createNewUser(
+    if ([fullName, email, username, password].some((field) => !field.trim())) {
+      throw new ApiError(400, "All fields are required");
+    }
+
+    // Check if user exists
+    const userExists = await findUserByIdentifier(
+      username,
+      email,
+      session,
+    );
+    if (userExists) {
+      throw new ApiError(409, "User with the same email or username exists");
+    }
+
+    // Upload images
+    const coverImage = coverImageLocalPath
+      ? await uploadOnCloudinary(coverImageLocalPath)
+      : "";
+    const avatar = avatarLocalPath
+      ? await uploadOnCloudinary(avatarLocalPath)
+      : "";
+
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create the user and get the document including _id
+    const newUser = await createNewUser(
       fullName,
       email,
       username,
-      password,
+      hashedPassword,
       coverImage,
       avatar,
+      session,
+    );
+    
+    await publishMessage(
+      "user-events-exchange",
+      "user.registration.auth",
+      {
+        email: email,
+        username: username,
+        password: hashedPassword, // Or omit password if not needed
+      },
     );
 
-    return user;
+    // Publish email notification event
+    await publishMessage(
+      "user-events-exchange",
+      "user.registration.email",
+      {
+        fullName: fullName,
+        email: email,
+        username: username,
+      },
+    );
+    // Commit transaction
+    await session.commitTransaction();
+    session.endSession();
+    return newUser;
   } catch (error) {
-    console.log(error);
-    throw new ApiError(500, error.message);
+    // Abort transaction on error
+    await session.abortTransaction();
+    session.endSession();
+    throw new ApiError(
+      error.statusCode || 500,
+      error.message || "Internal Server Error",
+    );
   }
 };
 const changePasswordService = async (
@@ -58,7 +107,7 @@ const changePasswordService = async (
   confirmNewPassword,
 ) => {
   try {
-    const user = await findUserByIdentifier(userId);
+    const user = await findUserByUserId(userId);
     if (!user) {
       throw new ApiError(404, "User not found");
     }

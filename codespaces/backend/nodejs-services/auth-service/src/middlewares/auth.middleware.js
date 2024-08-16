@@ -3,6 +3,7 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import jwt from "jsonwebtoken";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { generateAccessToken } from "../services/token.services.js";
 
 const options = {
   httpOnly: true,
@@ -13,19 +14,20 @@ const AccessTokenOptions = {
   httpOnly: true,
   secure: true,
   sameSite: "none",
-  expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  expires: new Date(Date.now() + 15 * 60 * 1000),
 };
 
 const verifyToken = (token, secret) => {
   try {
     return jwt.verify(token, secret);
   } catch (error) {
+    console.log(error);
     throw error;
   }
 };
 
 const getUserFromToken = async (decodedToken) => {
-  return await User.findOne({ username: decodedToken?.username }).select(
+  return await User.findOne({ userId: decodedToken?.userId }).select(
     "-password -refreshToken",
   );
 };
@@ -33,7 +35,7 @@ const getUserFromToken = async (decodedToken) => {
 const renewAccessToken = asyncHandler(async (req, res, next) => {
   const refreshToken =
     req.cookies?.refreshToken ||
-    req.header("Authorization")?.replace("Bearer", "").trim();
+    req.header("Authorization")?.replace("Bearer", "").trim()||req.body.refreshToken;
   if (!refreshToken) {
     throw new ApiError(401, "Unauthorized Request");
   }
@@ -47,24 +49,25 @@ const renewAccessToken = asyncHandler(async (req, res, next) => {
     if (!user) {
       throw new ApiError(401, "Invalid Refresh Token");
     }
-    const accessToken = user.generateAccessToken();
+    const accessToken = generateAccessToken(user);
     req.user = user;
     res.cookie("accessToken", accessToken, AccessTokenOptions);
     next();
   } catch (error) {
+    console.log(error);
     res
       .clearCookie("accessToken", options)
       .clearCookie("refreshToken", options);
     return res
       .status(401)
-      .json(new ApiResponse(401, 22, "Sign In Again to Continue"));
+      .json(new ApiResponse(401, 22, "You have been Logged out , Sign In Again to Continue"));
   }
 });
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
   const accessToken =
     req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer", "").trim();
+    req.header("Authorization")?.replace("Bearer", "").trim()||req.body.accessToken;
 
   if (!accessToken) {
     return await renewAccessToken(req, res, next);
@@ -95,4 +98,14 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
   }
 });
 
-export { renewAccessToken, verifyJWT };
+export { verifyJWT };
+// fetch('localhost:3001/api/v1/users/login', {
+//   method: 'POST',
+//   headers: {
+//       'Content-Type': 'application/json' // Indicates that you're sending JSON data
+//   },
+//   body: JSON.stringify({
+//       identifier: "vallabhwasule913@gmail.com",
+//       password: "12345678"
+//   })
+// })

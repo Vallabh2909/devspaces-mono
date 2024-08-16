@@ -4,7 +4,6 @@ import { ApiError } from "../utils/ApiError.js";
 import jwt from "jsonwebtoken";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import axios from "axios";
-import { credentials } from "amqplib";
 
 const options = {
   httpOnly: true,
@@ -64,33 +63,22 @@ const renewAccessToken = asyncHandler(async (req, res, next) => {
 });
 
 const verifyJWT = asyncHandler(async (req, res, next) => {
-  console.log(req.cookies);
-  
-  const accessToken =
-    req.cookies?.accessToken ||
-    req.header("Authorization")?.replace("Bearer", "").trim();
-
-  if (!accessToken) {
-    return await renewAccessToken(req, res, next);
-  }
-  
   try {
-    const isTokenValid = await axios.post("http://localhost:3001/api/v1/users/verify-token", {credentials:true}, {
-      cookies: req.cookies
-    });
-    
-    // if (isTokenValid.data.valid) {
-    //   next(); // Token is valid, proceed to the next middleware
-    // } else {
-    //   res.status(401).json({ message: "Invalid token" });
-    // }
+    const isTokenValid = await axios.post(
+      "http://localhost:3001/api/v1/users/verify-token",
+      {
+        accessToken: req.cookies.accessToken,
+        refreshToken: req.cookies.refreshToken,
+      },
+    );
 
-    console.log(isTokenValid.data);
+    req.user = isTokenValid.data.data.user;
     next();
   } catch (error) {
-    res.status(500).json({ message: "Token verification failed", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Token verification failed", error: error.message });
   }
 });
-
 
 export { renewAccessToken, verifyJWT };

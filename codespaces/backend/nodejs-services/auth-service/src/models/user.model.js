@@ -4,14 +4,6 @@ import { redisClient } from "../config/Redis.js";
 // import { channel } from "../config/RabbitMQ.js";
 const userSchema = new Schema(
   {
-    userId: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      index: true,
-    },
     username: {
       type: String,
       required: true,

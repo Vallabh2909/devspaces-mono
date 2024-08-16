@@ -1,22 +1,20 @@
 import { Router } from "express";
-import { logIn,logOut} from "../controllers/user.controllers.js";
+import { logIn, logOut } from "../controllers/user.controllers.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { consumeQueue,publishMessage } from "../config/RabbitMQ.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 const router = Router();
 
-let i=0;
-
 router.route("/login").post(logIn);
-router.route("/logout").post(verifyJWT,logOut);
-router.route("/fet").get(async(req, res) => {  
-    const respo =consumeQueue("password-change-queue",(msg)=>{console.log(msg)});  
-    return res.json(respo);
-});
-router.route("/publish").get(async(req, res) => {  
-    const respo =  publishMessage("event-bus","password-change", `Hello World ${i++}`);
-    return res.json(respo);
-});
-router.route("/verify-token").post(verifyJWT,(req,res)=>{
-    return res.json({message:"Token verified",success:true});
+router.route("/logout").post(verifyJWT, logOut);
+router.route("/verify-token").post(verifyJWT, (req, res) => {
+  return res.json(
+    new ApiResponse(
+      200,
+      {
+        user: req.user,
+      },
+      "Token is valid",
+    ),
+  );
 });
 export default router;
