@@ -7,7 +7,7 @@ const envPath = resolve(__dirname, `../.env.${process.env.NODE_ENV}`);
 import connectDB from "./config/MongoDB.js";
 import { connectRedis } from "./config/Redis.js";
 import { connectRabbitMQ, consumeQueue } from "./config/RabbitMQ.js";
-import { createUser } from "./repositories/user.repositories.js";
+import { createUser, updateUserPassword,updateUserEmail,updateUsername} from "./repositories/user.repositories.js";
 dotenv.config({
   path: envPath,
 });
@@ -43,6 +43,15 @@ const startServer = async () => {
     app.listen(PORT, async () => {
       console.log(`Server is running on port ${PORT}`);
       await consumeQueue("auth-registration-queue", createUser);
+      await consumeQueue("auth-password-change-queue", updateUserPassword);
+      await consumeQueue("auth-email-change-queue", updateUserEmail);
+      await consumeQueue("auth-username-change-queue", updateUsername);
+
+      // Notification Queues
+      // await consumeQueue("notification-username-change-queue", (msg)=>console.log(msg));
+      // await consumeQueue("notification-registration-queue", (msg)=>console.log(msg));
+      // await consumeQueue("notification-password-change-queue", (msg)=>console.log(msg));
+      // await consumeQueue("notification-email-change-queue", (msg)=>console.log(msg));
     });
   } catch (error) {
     console.error("Failed to start server:", error);

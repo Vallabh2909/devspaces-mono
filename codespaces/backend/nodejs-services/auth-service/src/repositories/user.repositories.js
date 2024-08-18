@@ -49,4 +49,57 @@ const createUser = async (user) => {
   }
 };
 
-export { findUserByIdentifier, setRefreshToken, createUser };
+const updateUserPassword = async (data) => {
+  const { email, password } = data;
+  console.log("Updating password", email, password);
+  try {
+    await User.findOneAndUpdate(
+      { email: email },
+      {
+        $set: {
+          password: password,
+        },
+      },
+      {
+        new: true,
+      },
+    );
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "Something went wrong while updating user password",
+    );
+  }
+};
+const updateUserEmail = async (data) => {
+  const { email, newEmail } = data;
+  console.log("Updating email", email, newEmail);
+  try {
+    await User.findOneAndUpdate(
+      { email: email },
+      { $set: { email: newEmail } },
+    );
+  } catch (error) {
+    throw new ApiError(500, "Something went wrong while updating user email");
+  }
+};
+
+const updateUsername = async (data) => {
+  const { email, newUsername } = data;
+  // console.log("Updating username", email, username);
+  try {
+    await User.findOneAndUpdate(
+      { email: email },
+      { $set: { username: newUsername } },
+    );
+  } catch (error) {}
+};
+
+export {
+  findUserByIdentifier,
+  setRefreshToken,
+  createUser,
+  updateUserPassword,
+  updateUserEmail,
+  updateUsername,
+};

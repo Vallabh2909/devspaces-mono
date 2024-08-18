@@ -10,6 +10,7 @@ const cookieOptions = {
 };
 
 const logIn = asyncHandler(async (req, res) => {
+  console.log("Logging in user");
   const { identifier, password } = req.body;
   const { accessToken, refreshToken } = await logInUser(identifier, password);
   const accessTokenExpiry = new Date(Date.now() +  60 * 1000);

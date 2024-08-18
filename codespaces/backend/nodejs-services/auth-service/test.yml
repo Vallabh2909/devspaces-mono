@@ -1,0 +1,14 @@
+config:
+  target: 'http://localhost:3001'
+  phases:
+    - duration: 20
+      arrivalRate: 100
+scenarios:
+  - flow:
+    - post:
+        url: '/api/v1/users/login'
+        json:
+          identifier: "wasulevallabh@gmail.com"
+          password: "45678912"
+        headers:
+          Content-Type: 'application/json'

@@ -1,7 +1,7 @@
 import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import mongoose from "mongoose";
-const findUserByIdentifier = async (username, email) => {
+const findUserByIdentifier = async (username = "", email = "") => {
   try {
     const user = await User.findOne({ $or: [{ email }, { username }] });
     return user;
@@ -49,19 +49,30 @@ const createNewUser = async (
     throw new Error(`Repository Error: ${error.message}`);
   }
 };
-const deleteUserById=async(userId)=>{
-  try{
-    const result=await User.deleteOne({_id:userId});
+const deleteUserById = async (userId) => {
+  try {
+    const result = await User.deleteOne({ _id: userId });
     return result;
-  }catch(error){
+  } catch (error) {
     throw new ApiError(401, "Error Occured in deleteUserById function");
   }
-}
+};
+const updateUserEmail = async (email, newEmail) => {
+  try {
+    const result = await User.findOneAndUpdate(
+      { email: email },
+      { email: newEmail },
+    );
+    return result;
+  } catch (error) {
+    throw new ApiError(401, "Error Occured in updateUserEmail function");
+  }
+};
 
-const updateUserPassword = async (userId, newPassword) => {
+const updateUserPassword = async (email, newPassword) => {
   try {
     const result = await User.updateOne(
-      { _id: new mongoose.Types.ObjectId(`${userId}`) },
+      { email: email },
       { $set: { password: newPassword } },
     );
     return result;
@@ -76,10 +87,25 @@ const updateUserPassword = async (userId, newPassword) => {
   }
 };
 
+const updateUsername = async (email, newUsername) => {
+  try {
+    const result = await User.findOneAndUpdate(
+      { email: email },
+      { $set: { username: newUsername } },
+      { new: true },
+    );
+    return result;
+  } catch (error) {
+    throw new ApiError(401, "Error Occured in updateUsername function");
+  }
+};
+
 export {
   findUserByIdentifier,
   createNewUser,
   updateUserPassword,
   findUserByUserId,
-  deleteUserById
+  deleteUserById,
+  updateUserEmail,
+  updateUsername,
 };
